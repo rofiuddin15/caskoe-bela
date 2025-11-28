@@ -8,11 +8,20 @@ use App\Models\Employee;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Resources\EmployeeResource;
 
 class EmployeeController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Daftar semua karyawan
+     *
+     * Menampilkan daftar karyawan dengan user dan cabang. Mendukung filter dan pencarian.
+     *
+     * @authenticated
+     * @queryParam branch_id integer Filter berdasarkan ID cabang. Example: 1
+     * @queryParam is_active integer Filter karyawan aktif (0/1). Example: 1
+     * @queryParam search string Cari berdasarkan kode, posisi, nama, atau email. Example: kasir
+     * @queryParam per_page integer Jumlah data per halaman. Default: 15. Example: 10
      */
     public function index(Request $request)
     {
@@ -44,7 +53,29 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Buat karyawan baru
+     *
+     * Membuat user dan employee sekaligus. User otomatis di-assign role sesuai parameter.
+     *
+     * @authenticated
+     * @bodyParam name string required Nama karyawan. Example: John Doe
+     * @bodyParam email string required Email unik. Example: john@cafepro.com
+     * @bodyParam password string required Password (minimal 8 karakter). Example: password123
+     * @bodyParam phone string Nomor telepon. Example: 08123456789
+     * @bodyParam address string Alamat karyawan. Example: Jl. Merdeka No. 5
+     * @bodyParam branch_id integer ID cabang penempatan. Example: 1
+     * @bodyParam employee_code string required Kode karyawan unik. Example: EMP001
+     * @bodyParam position string Jabatan. Example: Kasir
+     * @bodyParam hire_date date Tanggal masuk kerja. Example: 2025-01-01
+     * @bodyParam salary numeric Gaji bulanan. Example: 5000000
+     * @bodyParam role string required Role karyawan (owner, admin_pusat, manajer_cabang, kasir, karyawan_dapur). Example: kasir
+     *
+     * @response 201 {
+     *   "id": 1,
+     *   "employee_code": "EMP001",
+     *   "position": "Kasir",
+     *   "user": {...}
+     * }
      */
     public function store(Request $request)
     {
@@ -91,7 +122,7 @@ class EmployeeController extends Controller
 
             DB::commit();
 
-            return response()->json($employee, 201);
+            return new EmployeeResource($employee);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -102,16 +133,38 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Detail karyawan
+     *
+     * Menampilkan detail karyawan termasuk user, role, dan cabang.
+     *
+     * @authenticated
+     * @urlParam employee integer required ID karyawan. Example: 1
      */
     public function show(Employee $employee)
     {
         $employee->load(['user.roles', 'branch']);
-        return response()->json($employee);
+        return new EmployeeResource($employee);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update karyawan
+     *
+     * Memperbarui data karyawan dan user terkait. Dapat mengubah role karyawan.
+     *
+     * @authenticated
+     * @urlParam employee integer required ID karyawan. Example: 1
+     * @bodyParam name string Nama karyawan. Example: Jane Doe
+     * @bodyParam email string Email. Example: jane@cafepro.com
+     * @bodyParam password string Password baru (minimal 8 karakter). Example: newpassword123
+     * @bodyParam phone string Nomor telepon. Example: 08123456789
+     * @bodyParam address string Alamat. Example: Jl. Sudirman No. 10
+     * @bodyParam branch_id integer ID cabang. Example: 2
+     * @bodyParam employee_code string Kode karyawan. Example: EMP002
+     * @bodyParam position string Jabatan. Example: Manajer
+     * @bodyParam hire_date date Tanggal masuk. Example: 2025-01-15
+     * @bodyParam salary numeric Gaji bulanan. Example: 6000000
+     * @bodyParam is_active boolean Status aktif. Example: true
+     * @bodyParam role string Role karyawan. Example: manajer_cabang
      */
     public function update(Request $request, Employee $employee)
     {
@@ -167,7 +220,7 @@ class EmployeeController extends Controller
 
             DB::commit();
 
-            return response()->json($employee);
+            return new EmployeeResource($employee);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -178,7 +231,16 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus karyawan
+     *
+     * Menghapus karyawan dan user terkait dari database.
+     *
+     * @authenticated
+     * @urlParam employee integer required ID karyawan. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Employee deleted successfully"
+     * }
      */
     public function destroy(Employee $employee)
     {

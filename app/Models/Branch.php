@@ -4,6 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $code
+ * @property string|null $address
+ * @property string|null $phone
+ * @property string|null $email
+ * @property string|null $opening_time
+ * @property string|null $closing_time
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class Branch extends Model
 {
     protected $fillable = [

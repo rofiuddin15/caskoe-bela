@@ -4,6 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $description
+ * @property float $total_cost
+ * @property float $yield_quantity
+ * @property string $yield_unit
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class Recipe extends Model
 {
     protected $fillable = [

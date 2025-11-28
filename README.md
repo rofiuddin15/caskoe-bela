@@ -121,6 +121,22 @@ php artisan queue:work
 
 ## 📚 Dokumentasi API
 
+### Akses Dokumentasi Interaktif
+
+Dokumentasi API interaktif tersedia menggunakan **Scramble** (OpenAPI/Swagger):
+
+```
+http://localhost:8000/docs/api
+```
+
+Dokumentasi ini menyediakan:
+
+-   Daftar lengkap semua endpoint
+-   Parameter request dan response schema
+-   Fitur "Try it out" untuk testing langsung
+-   Contoh request dan response
+-   Autentikasi dengan Bearer token
+
 ### Autentikasi
 
 #### Login

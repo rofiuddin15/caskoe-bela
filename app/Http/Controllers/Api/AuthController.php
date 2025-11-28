@@ -11,7 +11,23 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * Login user and create token
+     * Login user dan membuat token autentikasi
+     *
+     * Login menggunakan email dan password untuk mendapatkan Bearer token.
+     * Token ini digunakan untuk mengakses endpoint yang dilindungi.
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @response 200 {
+     *   "user": {
+     *     "id": 1,
+     *     "name": "Test Owner",
+     *     "email": "owner@test.com"
+     *   },
+     *   "token": "1|abc123...",
+     *   "token_type": "Bearer"
+     * }
      */
     public function login(Request $request)
     {
@@ -41,7 +57,17 @@ class AuthController extends Controller
     }
 
     /**
-     * Logout user (revoke token)
+     * Logout user dan hapus token
+     *
+     * Menghapus token autentikasi saat ini. Setelah logout, token tidak dapat digunakan lagi.
+     *
+     * @authenticated
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @response 200 {
+     *   "message": "Logged out successfully"
+     * }
      */
     public function logout(Request $request)
     {
@@ -53,7 +79,24 @@ class AuthController extends Controller
     }
 
     /**
-     * Get authenticated user
+     * Dapatkan informasi user yang sedang login
+     *
+     * Mengembalikan data lengkap user yang terautentikasi termasuk role, permission, dan cabang.
+     *
+     * @authenticated
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * @response 200 {
+     *   "user": {
+     *     "id": 1,
+     *     "name": "Test Owner",
+     *     "email": "owner@test.com",
+     *     "roles": [...],
+     *     "permissions": [...],
+     *     "branch": {...}
+     *   }
+     * }
      */
     public function me(Request $request)
     {

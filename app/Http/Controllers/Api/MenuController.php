@@ -5,11 +5,21 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Menu;
+use App\Http\Resources\MenuResource;
 
 class MenuController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Daftar semua menu
+     *
+     * Menampilkan daftar menu dengan kategori dan resep. Mendukung filter dan pencarian.
+     *
+     * @authenticated
+     * @queryParam category_id integer Filter berdasarkan ID kategori. Example: 1
+     * @queryParam is_available integer Filter menu yang tersedia (0/1). Example: 1
+     * @queryParam is_active integer Filter menu aktif (0/1). Example: 1
+     * @queryParam search string Cari berdasarkan nama, kode, atau deskripsi. Example: kopi
+     * @queryParam per_page integer Jumlah data per halaman. Default: 15. Example: 10
      */
     public function index(Request $request)
     {
@@ -42,7 +52,27 @@ class MenuController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Buat menu baru
+     *
+     * Membuat item menu baru. HPP (cost) akan otomatis dihitung dari resep jika recipe_id disediakan.
+     *
+     * @authenticated
+     * @bodyParam menu_category_id integer required ID kategori menu. Example: 1
+     * @bodyParam recipe_id integer ID resep untuk auto-calculate HPP. Example: 1
+     * @bodyParam name string required Nama menu. Example: Kopi Susu Signature
+     * @bodyParam code string required Kode unik menu. Example: MENU001
+     * @bodyParam description string Deskripsi menu. Example: Kopi susu dengan rasa nikmat
+     * @bodyParam image string URL atau path gambar menu. Example: /storage/images/menu/kopi-susu.jpg
+     * @bodyParam price numeric required Harga jual. Example: 25000
+     * @bodyParam preparation_time integer Waktu persiapan dalam menit. Example: 5
+     *
+     * @response 201 {
+     *   "id": 1,
+     *   "name": "Kopi Susu Signature",
+     *   "price": 25000,
+     *   "cost": 8500,
+     *   "profit_margin": 66
+     * }
      */
     public function store(Request $request)
     {
@@ -65,20 +95,40 @@ class MenuController extends Controller
 
         $menu = Menu::create($validated);
 
-        return response()->json($menu->load(['category', 'recipe']), 201);
+        return new MenuResource($menu->load(['category', 'recipe']));
     }
 
     /**
-     * Display the specified resource.
+     * Detail menu
+     *
+     * Menampilkan detail menu termasuk kategori, resep, dan bahan baku yang digunakan.
+     *
+     * @authenticated
+     * @urlParam menu integer required ID menu. Example: 1
      */
     public function show(Menu $menu)
     {
         $menu->load(['category', 'recipe.items.rawMaterial']);
-        return response()->json($menu);
+        return new MenuResource($menu);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update menu
+     *
+     * Memperbarui data menu. HPP akan otomatis diupdate jika recipe_id diubah.
+     *
+     * @authenticated
+     * @urlParam menu integer required ID menu. Example: 1
+     * @bodyParam menu_category_id integer ID kategori menu. Example: 1
+     * @bodyParam recipe_id integer ID resep untuk auto-calculate HPP. Example: 1
+     * @bodyParam name string Nama menu. Example: Kopi Susu Premium
+     * @bodyParam code string Kode unik menu. Example: MENU001
+     * @bodyParam description string Deskripsi menu. Example: Kopi susu premium
+     * @bodyParam image string URL atau path gambar menu. Example: /storage/images/menu/kopi-susu.jpg
+     * @bodyParam price numeric Harga jual. Example: 28000
+     * @bodyParam preparation_time integer Waktu persiapan dalam menit. Example: 5
+     * @bodyParam is_available boolean Menu tersedia untuk dijual. Example: true
+     * @bodyParam is_active boolean Status aktif menu. Example: true
      */
     public function update(Request $request, Menu $menu)
     {
@@ -103,11 +153,20 @@ class MenuController extends Controller
 
         $menu->update($validated);
 
-        return response()->json($menu->load(['category', 'recipe']));
+        return new MenuResource($menu->load(['category', 'recipe']));
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus menu
+     *
+     * Menghapus menu dari database.
+     *
+     * @authenticated
+     * @urlParam menu integer required ID menu. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Menu deleted successfully"
+     * }
      */
     public function destroy(Menu $menu)
     {

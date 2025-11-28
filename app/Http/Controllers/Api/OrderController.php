@@ -11,11 +11,21 @@ use App\Models\Tax;
 use App\Events\OrderCreated;
 use App\Events\OrderStatusUpdated;
 use Illuminate\Support\Facades\DB;
+use App\Http\Resources\OrderResource;
 
 class OrderController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Daftar semua order
+     *
+     * Menampilkan daftar order dengan filter berdasarkan cabang, status, tipe, dan tanggal.
+     *
+     * @authenticated
+     * @queryParam branch_id integer Filter berdasarkan ID cabang. Example: 1
+     * @queryParam status string Filter berdasarkan status (pending, preparing, ready, served, completed, cancelled). Example: pending
+     * @queryParam order_type string Filter berdasarkan tipe (dine_in, takeaway, delivery). Example: dine_in
+     * @queryParam date string Filter berdasarkan tanggal (format: Y-m-d). Example: 2025-01-15
+     * @queryParam per_page integer Jumlah data per halaman. Default: 15. Example: 10
      */
     public function index(Request $request)
     {
@@ -43,7 +53,33 @@ class OrderController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Buat order baru (POS)
+     *
+     * Membuat order baru untuk dine-in, takeaway, atau delivery. Order number dibuat otomatis.
+     * Mendukung WebSocket real-time untuk notifikasi dapur.
+     *
+     * @authenticated
+     * @bodyParam branch_id integer required ID cabang. Example: 1
+     * @bodyParam table_id integer ID meja (untuk dine-in). Example: 5
+     * @bodyParam order_type string required Tipe order (dine_in, takeaway, delivery). Example: dine_in
+     * @bodyParam customer_name string Nama customer. Example: John Doe
+     * @bodyParam customer_phone string Nomor telepon customer. Example: 08123456789
+     * @bodyParam delivery_address string Alamat pengiriman (untuk delivery). Example: Jl. Sudirman No. 10
+     * @bodyParam notes string Catatan order. Example: Less sugar
+     * @bodyParam items array required Array item yang dipesan (minimal 1).
+     * @bodyParam items.*.menu_id integer required ID menu. Example: 1
+     * @bodyParam items.*.quantity integer required Jumlah. Example: 2
+     * @bodyParam items.*.notes string Catatan item. Example: Extra hot
+     *
+     * @response 201 {
+     *   "id": 1,
+     *   "order_number": "ORD-20250115-0001",
+     *   "status": "pending",
+     *   "subtotal": 50000,
+     *   "tax_amount": 5000,
+     *   "service_charge": 2500,
+     *   "total_amount": 57500
+     * }
      */
     public function store(Request $request)
     {
@@ -131,7 +167,7 @@ class OrderController extends Controller
             // Broadcast order created event
             broadcast(new OrderCreated($order))->toOthers();
 
-            return response()->json($order->load(['items.menu', 'table']), 201);
+            return new OrderResource($order->load(['items.menu', 'table']));
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -142,16 +178,29 @@ class OrderController extends Controller
     }
 
     /**
-     * Display the specified resource.
+     * Detail order
+     *
+     * Menampilkan detail order lengkap termasuk item, meja, cabang, kasir, dan pembayaran.
+     *
+     * @authenticated
+     * @urlParam order integer required ID order. Example: 1
      */
     public function show(Order $order)
     {
         $order->load(['items.menu', 'table', 'branch', 'cashier', 'payments']);
-        return response()->json($order);
+        return new OrderResource($order);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update informasi order
+     *
+     * Memperbarui informasi customer dan catatan order.
+     *
+     * @authenticated
+     * @urlParam order integer required ID order. Example: 1
+     * @bodyParam notes string Catatan order. Example: Customer request
+     * @bodyParam customer_name string Nama customer. Example: Jane Doe
+     * @bodyParam customer_phone string Nomor telepon customer. Example: 08123456789
      */
     public function update(Request $request, Order $order)
     {
@@ -163,11 +212,23 @@ class OrderController extends Controller
 
         $order->update($validated);
 
-        return response()->json($order);
+        return new OrderResource($order);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus order
+     *
+     * Menghapus order dengan status pending. Order dengan status lain tidak dapat dihapus.
+     *
+     * @authenticated
+     * @urlParam order integer required ID order. Example: 1
+     *
+     * @response 200 {
+     *   "message": "Order deleted successfully"
+     * }
+     * @response 400 {
+     *   "message": "Cannot delete order that is not pending"
+     * }
      */
     public function destroy(Order $order)
     {
@@ -185,7 +246,16 @@ class OrderController extends Controller
     }
 
     /**
-     * Add item to existing order
+     * Tambah item ke order
+     *
+     * Menambahkan item baru ke order yang sudah ada. Hanya bisa dilakukan pada order dengan status pending atau preparing.
+     * Total order akan dihitung ulang otomatis.
+     *
+     * @authenticated
+     * @urlParam id integer required ID order. Example: 1
+     * @bodyParam menu_id integer required ID menu. Example: 2
+     * @bodyParam quantity integer required Jumlah. Example: 1
+     * @bodyParam notes string Catatan item. Example: No ice
      */
     public function addItem(Request $request, $id)
     {
@@ -222,7 +292,21 @@ class OrderController extends Controller
     }
 
     /**
-     * Update order status
+     * Update status order
+     *
+     * Mengubah status order (pending → preparing → ready → served → completed).
+     * Mendukung WebSocket real-time untuk update ke dapur dan kasir.
+     *
+     * @authenticated
+     * @urlParam id integer required ID order. Example: 1
+     * @bodyParam status string required Status baru (pending, preparing, ready, served, completed, cancelled). Example: preparing
+     *
+     * @response 200 {
+     *   "id": 1,
+     *   "order_number": "ORD-20250115-0001",
+     *   "status": "preparing",
+     *   "completed_at": null
+     * }
      */
     public function updateStatus(Request $request, $id)
     {
@@ -250,7 +334,26 @@ class OrderController extends Controller
     }
 
     /**
-     * Process payment for order
+     * Proses pembayaran order
+     *
+     * Memproses pembayaran untuk order. Mendukung multiple metode pembayaran (cash, QRIS, kartu).
+     * Setelah pembayaran sukses, status order otomatis menjadi completed.
+     *
+     * @authenticated
+     * @urlParam id integer required ID order. Example: 1
+     * @bodyParam payment_method string required Metode pembayaran (cash, qris, debit_card, credit_card, transfer). Example: cash
+     * @bodyParam amount numeric required Jumlah pembayaran. Example: 60000
+     * @bodyParam cash_received numeric Uang diterima (untuk metode cash). Example: 100000
+     * @bodyParam reference_number string Nomor referensi (untuk non-cash). Example: TRX123456
+     *
+     * @response 200 {
+     *   "message": "Payment processed successfully",
+     *   "order": {...},
+     *   "change": 42500
+     * }
+     * @response 400 {
+     *   "message": "Payment amount is less than total"
+     * }
      */
     public function processPayment(Request $request, $id)
     {

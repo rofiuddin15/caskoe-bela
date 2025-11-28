@@ -4,6 +4,27 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $order_number
+ * @property int $branch_id
+ * @property int|null $table_id
+ * @property int $cashier_id
+ * @property string $order_type
+ * @property string $status
+ * @property string|null $customer_name
+ * @property string|null $customer_phone
+ * @property string|null $delivery_address
+ * @property string|null $notes
+ * @property float $subtotal
+ * @property float $tax_amount
+ * @property float $service_charge
+ * @property float $discount
+ * @property float $total_amount
+ * @property \Illuminate\Support\Carbon|null $completed_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class Order extends Model
 {
     protected $fillable = [

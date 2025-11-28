@@ -5,11 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Branch;
+use App\Http\Resources\BranchResource;
 
 class BranchController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Daftar semua cabang
+     *
+     * Menampilkan daftar cabang dengan pagination. Mendukung filter berdasarkan status aktif dan pencarian.
+     *
+     * Query parameters:
+     * - is_active: Filter berdasarkan status aktif (0/1)
+     * - search: Cari berdasarkan nama, kode, atau alamat
+     * - per_page: Jumlah data per halaman (default: 15)
      */
     public function index(Request $request)
     {
@@ -34,7 +42,19 @@ class BranchController extends Controller
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Buat cabang baru
+     *
+     * Membuat cabang baru dengan data yang disediakan.
+     *
+     * Request body harus berisi:
+     * - name (required): Nama cabang
+     * - code (required): Kode unik cabang
+     * - address: Alamat cabang
+     * - phone: Nomor telepon
+     * - email: Email cabang
+     * - opening_time: Jam buka (format HH:mm)
+     * - closing_time: Jam tutup (format HH:mm)
+     * - is_active: Status aktif (boolean)
      */
     public function store(Request $request)
     {
@@ -51,20 +71,34 @@ class BranchController extends Controller
 
         $branch = Branch::create($validated);
 
-        return response()->json($branch, 201);
+        return new BranchResource($branch);
     }
 
     /**
-     * Display the specified resource.
+     * Detail cabang
+     *
+     * Menampilkan detail cabang termasuk karyawan dan user yang terkait.
      */
     public function show(Branch $branch)
     {
         $branch->load(['employees.user', 'users']);
-        return response()->json($branch);
+        return new BranchResource($branch);
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update cabang
+     *
+     * Memperbarui data cabang yang sudah ada.
+     *
+     * Semua field bersifat opsional:
+     * - name: Nama cabang
+     * - code: Kode unik cabang
+     * - address: Alamat cabang
+     * - phone: Nomor telepon
+     * - email: Email cabang
+     * - opening_time: Jam buka (format HH:mm)
+     * - closing_time: Jam tutup (format HH:mm)
+     * - is_active: Status aktif (boolean)
      */
     public function update(Request $request, Branch $branch)
     {
@@ -81,11 +115,13 @@ class BranchController extends Controller
 
         $branch->update($validated);
 
-        return response()->json($branch);
+        return new BranchResource($branch);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus cabang
+     *
+     * Menghapus cabang dari database.
      */
     public function destroy(Branch $branch)
     {

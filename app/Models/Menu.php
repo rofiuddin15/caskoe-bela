@@ -4,6 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $menu_category_id
+ * @property int|null $recipe_id
+ * @property string $name
+ * @property string $code
+ * @property string|null $description
+ * @property string|null $image
+ * @property float $price
+ * @property float $cost
+ * @property int|null $preparation_time
+ * @property bool $is_available
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read float $profit_margin
+ */
 class Menu extends Model
 {
     protected $fillable = [

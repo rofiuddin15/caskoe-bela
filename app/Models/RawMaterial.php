@@ -4,6 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $code
+ * @property string $unit
+ * @property float $unit_price
+ * @property string|null $description
+ * @property float|null $min_stock
+ * @property bool $is_active
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class RawMaterial extends Model
 {
     protected $fillable = [

@@ -4,6 +4,16 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property int $raw_material_id
+ * @property int $branch_id
+ * @property float $quantity
+ * @property float $reserved_quantity
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read float $available_quantity
+ */
 class Stock extends Model
 {
     protected $fillable = [

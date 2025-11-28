@@ -10,7 +10,26 @@ use Illuminate\Support\Str;
 class ImageUploadController extends Controller
 {
     /**
-     * Upload an image
+     * Upload gambar
+     *
+     * Upload gambar untuk menu, user, atau branch. Ukuran maksimal 2MB.
+     * File disimpan di storage/app/public/images/{type}/
+     *
+     * @authenticated
+     * @bodyParam image file required File gambar (jpeg, png, jpg, gif, max: 2MB).
+     * @bodyParam type string Tipe gambar (menu, user, branch). Default: menu. Example: menu
+     *
+     * @response 200 {
+     *   "success": true,
+     *   "filename": "menu_1732778400_xY9z2K4pLm.jpg",
+     *   "path": "images/menu/menu_1732778400_xY9z2K4pLm.jpg",
+     *   "url": "/storage/images/menu/menu_1732778400_xY9z2K4pLm.jpg"
+     * }
+     * @response 500 {
+     *   "success": false,
+     *   "message": "Image upload failed",
+     *   "error": "..."
+     * }
      */
     public function upload(Request $request)
     {
@@ -48,7 +67,21 @@ class ImageUploadController extends Controller
     }
 
     /**
-     * Delete an image
+     * Hapus gambar
+     *
+     * Menghapus file gambar dari storage berdasarkan path.
+     *
+     * @authenticated
+     * @bodyParam path string required Path file gambar (relatif dari storage/app/public/). Example: images/menu/menu_1732778400_xY9z2K4pLm.jpg
+     *
+     * @response 200 {
+     *   "success": true,
+     *   "message": "Image deleted successfully"
+     * }
+     * @response 404 {
+     *   "success": false,
+     *   "message": "Image not found"
+     * }
      */
     public function delete(Request $request)
     {

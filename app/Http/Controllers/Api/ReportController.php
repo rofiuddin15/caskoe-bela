@@ -16,7 +16,26 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class ReportController extends Controller
 {
     /**
-     * Sales Report
+     * Laporan Penjualan
+     *
+     * Menampilkan laporan penjualan dalam periode tertentu dengan analisis per hari,
+     * top selling items, dan penjualan per kategori.
+     *
+     * @authenticated
+     * @queryParam start_date date required Tanggal mulai (format: Y-m-d). Example: 2025-01-01
+     * @queryParam end_date date required Tanggal akhir (format: Y-m-d). Example: 2025-12-31
+     * @queryParam branch_id integer Filter berdasarkan cabang. Example: 1
+     *
+     * @response 200 {
+     *   "summary": {
+     *     "total_sales": 5000000,
+     *     "total_orders": 150,
+     *     "average_order_value": 33333.33
+     *   },
+     *   "sales_by_day": [...],
+     *   "top_selling_items": [...],
+     *   "sales_by_category": [...]
+     * }
      */
     public function sales(Request $request)
     {
@@ -100,7 +119,27 @@ class ReportController extends Controller
     }
 
     /**
-     * Profit Report (Sales - HPP)
+     * Laporan Profit (Keuntungan)
+     *
+     * Menampilkan laporan profit dengan perhitungan Revenue - HPP - Biaya Operasional.
+     * Termasuk analisis profit margin dan top profit items.
+     *
+     * @authenticated
+     * @queryParam start_date date required Tanggal mulai (format: Y-m-d). Example: 2025-01-01
+     * @queryParam end_date date required Tanggal akhir (format: Y-m-d). Example: 2025-12-31
+     * @queryParam branch_id integer Filter berdasarkan cabang. Example: 1
+     *
+     * @response 200 {
+     *   "summary": {
+     *     "total_revenue": 5000000,
+     *     "total_cogs": 2000000,
+     *     "gross_profit": 3000000,
+     *     "operational_costs": 800000,
+     *     "net_profit": 2200000,
+     *     "profit_margin": 44
+     *   },
+     *   "top_profit_items": [...]
+     * }
      */
     public function profit(Request $request)
     {
@@ -185,7 +224,12 @@ class ReportController extends Controller
     }
 
     /**
-     * Inventory Report
+     * Laporan Inventori
+     *
+     * Menampilkan status inventori/stok bahan baku di semua cabang atau cabang tertentu.
+     *
+     * @authenticated
+     * @queryParam branch_id integer Filter berdasarkan cabang. Example: 1
      */
     public function inventory(Request $request)
     {
@@ -228,7 +272,26 @@ class ReportController extends Controller
     }
 
     /**
-     * Low Stock Alert
+     * Peringatan Stok Menipis
+     *
+     * Menampilkan daftar bahan baku yang stoknya di bawah minimum (low stock alert).
+     *
+     * @authenticated
+     * @queryParam branch_id integer Filter berdasarkan cabang. Example: 1
+     *
+     * @response 200 {
+     *   "total_low_stock_items": 5,
+     *   "items": [
+     *     {
+     *       "raw_material": "Kopi Arabica",
+     *       "branch": "Cabang Pusat",
+     *       "current_quantity": 3000,
+     *       "min_stock": 5000,
+     *       "unit": "gram",
+     *       "deficit": 2000
+     *     }
+     *   ]
+     * }
      */
     public function lowStock(Request $request)
     {
@@ -263,7 +326,26 @@ class ReportController extends Controller
     }
 
     /**
-     * Financial Report (Cash Flow)
+     * Laporan Keuangan (Cash Flow)
+     *
+     * Menampilkan laporan arus kas termasuk cash in (penjualan) dan cash out (biaya operasional).
+     *
+     * @authenticated
+     * @queryParam start_date date required Tanggal mulai (format: Y-m-d). Example: 2025-01-01
+     * @queryParam end_date date required Tanggal akhir (format: Y-m-d). Example: 2025-12-31
+     * @queryParam branch_id integer Filter berdasarkan cabang. Example: 1
+     *
+     * @response 200 {
+     *   "summary": {
+     *     "cash_in": 50000000,
+     *     "cash_out": 15000000,
+     *     "net_cash_flow": 35000000
+     *   },
+     *   "costs_by_category": [
+     *     {"category": "salary", "total": 10000000},
+     *     {"category": "utilities", "total": 2000000}
+     *   ]
+     * }
      */
     public function financial(Request $request)
     {
@@ -319,7 +401,16 @@ class ReportController extends Controller
     }
 
     /**
-     * Export Sales Report to PDF
+     * Export Laporan Penjualan ke PDF
+     *
+     * Download laporan penjualan dalam format PDF.
+     *
+     * @authenticated
+     * @queryParam start_date date required Tanggal mulai. Example: 2025-01-01
+     * @queryParam end_date date required Tanggal akhir. Example: 2025-12-31
+     * @queryParam branch_id integer Filter berdasarkan cabang. Example: 1
+     *
+     * @response 200 (binary) File PDF akan didownload
      */
     public function salesPdf(Request $request)
     {
@@ -389,7 +480,16 @@ class ReportController extends Controller
     }
 
     /**
-     * Export Profit Report to PDF
+     * Export Laporan Profit ke PDF
+     *
+     * Download laporan profit/keuntungan dalam format PDF.
+     *
+     * @authenticated
+     * @queryParam start_date date required Tanggal mulai. Example: 2025-01-01
+     * @queryParam end_date date required Tanggal akhir. Example: 2025-12-31
+     * @queryParam branch_id integer Filter berdasarkan cabang. Example: 1
+     *
+     * @response 200 (binary) File PDF akan didownload
      */
     public function profitPdf(Request $request)
     {

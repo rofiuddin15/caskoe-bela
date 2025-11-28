@@ -4,6 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * @property int $id
+ * @property string $po_number
+ * @property int $supplier_id
+ * @property int $branch_id
+ * @property int $created_by
+ * @property \Illuminate\Support\Carbon $order_date
+ * @property \Illuminate\Support\Carbon|null $expected_delivery_date
+ * @property \Illuminate\Support\Carbon|null $actual_delivery_date
+ * @property string $status
+ * @property float $total_amount
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ */
 class PurchaseOrder extends Model
 {
     protected $fillable = [
