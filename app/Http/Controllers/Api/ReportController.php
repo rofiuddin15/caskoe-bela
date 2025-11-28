@@ -11,6 +11,7 @@ use App\Models\Menu;
 use App\Models\Branch;
 use App\Models\OperationalCost;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ReportController extends Controller
 {
@@ -315,5 +316,164 @@ class ReportController extends Controller
             ],
             'costs_by_category' => $costsByCategory,
         ]);
+    }
+
+    /**
+     * Export Sales Report to PDF
+     */
+    public function salesPdf(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'branch_id' => 'nullable|exists:branches,id',
+        ]);
+
+        // Get report data (reuse sales method logic)
+        $query = Order::whereBetween('created_at', [
+            $request->start_date,
+            $request->end_date . ' 23:59:59'
+        ])->where('status', 'completed');
+
+        if ($request->branch_id) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        $totalSales = $query->sum('total_amount');
+        $totalOrders = $query->count();
+        $averageOrderValue = $totalOrders > 0 ? $totalSales / $totalOrders : 0;
+
+        $salesByDay = (clone $query)
+            ->select(
+                DB::raw('DATE(created_at) as date'),
+                DB::raw('COUNT(*) as total_orders'),
+                DB::raw('SUM(total_amount) as total_sales')
+            )
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        $topSellingItems = OrderItem::whereHas('order', function ($q) use ($request) {
+            $q->whereBetween('created_at', [
+                $request->start_date,
+                $request->end_date . ' 23:59:59'
+            ])->where('status', 'completed');
+            if ($request->branch_id) {
+                $q->where('branch_id', $request->branch_id);
+            }
+        })
+        ->select('menu_id', DB::raw('SUM(quantity) as total_quantity'), DB::raw('SUM(subtotal) as total_revenue'))
+        ->with('menu')
+        ->groupBy('menu_id')
+        ->orderByDesc('total_quantity')
+        ->limit(10)
+        ->get();
+
+        $branch = $request->branch_id ? Branch::find($request->branch_id) : null;
+
+        $data = [
+            'title' => 'Sales Report',
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'branch' => $branch,
+            'total_sales' => $totalSales,
+            'total_orders' => $totalOrders,
+            'average_order_value' => round($averageOrderValue, 2),
+            'sales_by_day' => $salesByDay,
+            'top_selling_items' => $topSellingItems,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+        ];
+
+        $pdf = Pdf::loadView('reports.sales', $data);
+        return $pdf->download('sales-report-' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Export Profit Report to PDF
+     */
+    public function profitPdf(Request $request)
+    {
+        $request->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'branch_id' => 'nullable|exists:branches,id',
+        ]);
+
+        $orderQuery = Order::whereBetween('created_at', [
+            $request->start_date,
+            $request->end_date . ' 23:59:59'
+        ])->where('status', 'completed');
+
+        if ($request->branch_id) {
+            $orderQuery->where('branch_id', $request->branch_id);
+        }
+
+        $totalRevenue = $orderQuery->sum('total_amount');
+
+        $orderItems = OrderItem::whereHas('order', function ($q) use ($request) {
+            $q->whereBetween('created_at', [
+                $request->start_date,
+                $request->end_date . ' 23:59:59'
+            ])->where('status', 'completed');
+            if ($request->branch_id) {
+                $q->where('branch_id', $request->branch_id);
+            }
+        })->with('menu')->get();
+
+        $totalCOGS = $orderItems->sum(function ($item) {
+            return $item->quantity * ($item->menu->cost ?? 0);
+        });
+
+        $costQuery = OperationalCost::whereBetween('cost_date', [
+            $request->start_date,
+            $request->end_date
+        ]);
+
+        if ($request->branch_id) {
+            $costQuery->where('branch_id', $request->branch_id);
+        }
+
+        $operationalCosts = $costQuery->sum('amount');
+        $grossProfit = $totalRevenue - $totalCOGS;
+        $netProfit = $grossProfit - $operationalCosts;
+        $profitMargin = $totalRevenue > 0 ? ($netProfit / $totalRevenue) * 100 : 0;
+
+        $profitByItem = $orderItems->groupBy('menu_id')->map(function ($items) {
+            $menu = $items->first()->menu;
+            $totalQty = $items->sum('quantity');
+            $totalRevenue = $items->sum('subtotal');
+            $totalCost = $totalQty * ($menu->cost ?? 0);
+            $profit = $totalRevenue - $totalCost;
+
+            return [
+                'menu_id' => $menu->id,
+                'menu_name' => $menu->name,
+                'quantity_sold' => $totalQty,
+                'revenue' => $totalRevenue,
+                'cost' => $totalCost,
+                'profit' => $profit,
+                'profit_margin' => $totalRevenue > 0 ? ($profit / $totalRevenue) * 100 : 0,
+            ];
+        })->values()->sortByDesc('profit')->take(10);
+
+        $branch = $request->branch_id ? Branch::find($request->branch_id) : null;
+
+        $data = [
+            'title' => 'Profit Report',
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'branch' => $branch,
+            'total_revenue' => round($totalRevenue, 2),
+            'total_cogs' => round($totalCOGS, 2),
+            'gross_profit' => round($grossProfit, 2),
+            'operational_costs' => round($operationalCosts, 2),
+            'net_profit' => round($netProfit, 2),
+            'profit_margin' => round($profitMargin, 2),
+            'top_profit_items' => $profitByItem,
+            'generated_at' => now()->format('Y-m-d H:i:s'),
+        ];
+
+        $pdf = Pdf::loadView('reports.profit', $data);
+        return $pdf->download('profit-report-' . date('Y-m-d') . '.pdf');
     }
 }

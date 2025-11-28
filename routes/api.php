@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\MenuCategoryController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ImageUploadController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
@@ -63,5 +64,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('inventory', [ReportController::class, 'inventory']);
         Route::get('low-stock', [ReportController::class, 'lowStock']);
         Route::get('financial', [ReportController::class, 'financial']);
+
+        // PDF Exports
+        Route::get('sales/pdf', [ReportController::class, 'salesPdf']);
+        Route::get('profit/pdf', [ReportController::class, 'profitPdf']);
     });
+
+    // Image Upload
+    Route::post('upload/image', [ImageUploadController::class, 'upload']);
+    Route::delete('upload/image', [ImageUploadController::class, 'delete']);
 });
