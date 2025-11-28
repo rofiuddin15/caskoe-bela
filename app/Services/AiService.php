@@ -2,7 +2,8 @@
 
 namespace App\Services;
 
-use OpenAI\Laravel\Facades\OpenAI;
+use EchoLabs\Prism\Prism;
+use EchoLabs\Prism\Enums\Provider;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Menu;
@@ -36,27 +37,19 @@ class AiService
         $salesData = $this->getHistoricalSalesData($branchId, 30);
         $topProducts = $this->getTopSellingProducts($branchId, 30);
 
-        // Prepare prompt for OpenAI
+        // Prepare prompt for AI
         $prompt = $this->buildForecastPrompt($salesData, $topProducts, $days);
 
         try {
-            $response = OpenAI::chat()->create([
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Anda adalah AI analyst yang ahli dalam sales forecasting untuk bisnis cafe. Berikan analisis dalam bahasa Indonesia dengan format JSON yang terstruktur.'
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ],
-                'response_format' => ['type' => 'json_object'],
-                'temperature' => 0.7,
-            ]);
+            // Use Prism with configurable provider
+            $response = Prism::text()
+                ->using(config('prism.default_provider', 'openai'), config('prism.providers.openai.model', 'gpt-4o-mini'))
+                ->withSystemPrompt('Anda adalah AI analyst yang ahli dalam sales forecasting untuk bisnis cafe. Berikan analisis dalam bahasa Indonesia dengan format JSON yang terstruktur.')
+                ->withPrompt($prompt)
+                ->withMaxTokens(2000)
+                ->generate();
 
-            $result = json_decode($response->choices[0]->message->content, true);
+            $result = json_decode($response->text, true);
 
             $forecast = [
                 'success' => true,
@@ -125,23 +118,15 @@ class AiService
         $prompt = $this->buildRecommendationPrompt($availableMenus, $popularMenus, $orderHistory, $currentCart);
 
         try {
-            $response = OpenAI::chat()->create([
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Anda adalah AI assistant untuk cafe yang ahli dalam memberikan rekomendasi menu. Berikan rekomendasi yang personal, relevan, dan menarik dalam bahasa Indonesia. Gunakan format JSON.'
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ],
-                'response_format' => ['type' => 'json_object'],
-                'temperature' => 0.8,
-            ]);
+            // Use Prism with configurable provider
+            $response = Prism::text()
+                ->using(config('prism.default_provider', 'openai'), config('prism.providers.openai.model', 'gpt-4o-mini'))
+                ->withSystemPrompt('Anda adalah AI assistant untuk cafe yang ahli dalam memberikan rekomendasi menu. Berikan rekomendasi yang personal, relevan, dan menarik dalam bahasa Indonesia. Gunakan format JSON.')
+                ->withPrompt($prompt)
+                ->withMaxTokens(1500)
+                ->generate();
 
-            $result = json_decode($response->choices[0]->message->content, true);
+            $result = json_decode($response->text, true);
 
             $recommendations = [
                 'success' => true,

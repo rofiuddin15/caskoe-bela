@@ -84,5 +84,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('menu-recommendations', [AiController::class, 'menuRecommendations']);
         Route::get('business-insights', [AiController::class, 'businessInsights']);
         Route::post('chatbot', [AiController::class, 'chatbot']);
+        Route::get('alerts', [AiController::class, 'getAlerts']);
+        Route::post('clear-cache', [AiController::class, 'clearCache']);
     });
 });

@@ -5,14 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Services\AiService;
+use App\Services\AiNotificationService;
+use App\Models\Branch;
+use Illuminate\Support\Facades\Cache;
 
 class AiController extends Controller
 {
     protected $aiService;
+    protected $notificationService;
 
-    public function __construct(AiService $aiService)
+    public function __construct(AiService $aiService, AiNotificationService $notificationService)
     {
         $this->aiService = $aiService;
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -176,6 +181,102 @@ class AiController extends Controller
             'success' => true,
             'message' => 'Chatbot feature coming soon',
             'question' => $validated['question'],
+        ]);
+    }
+
+    /**
+     * Get critical alerts for branch
+     *
+     * Mendapatkan alert penting dari forecast terakhir:
+     * - Stok kritis
+     * - Prediksi penurunan
+     * - Peluang pertumbuhan
+     *
+     * @authenticated
+     * @queryParam branch_id integer required ID cabang. Example: 1
+     *
+     * @response 200 {
+     *   "success": true,
+     *   "alerts": [...]
+     * }
+     */
+    public function getAlerts(Request $request)
+    {
+        $validated = $request->validate([
+            'branch_id' => 'required|exists:branches,id',
+        ]);
+
+        $branchId = $validated['branch_id'];
+        $branch = Branch::find($branchId);
+
+        // Get latest forecast from cache
+        $cacheKey = "sales_forecast_{$branchId}_7";
+
+        if (!Cache::has($cacheKey)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No forecast data available. Please generate forecast first.',
+            ], 404);
+        }
+
+        $forecast = Cache::get($cacheKey);
+        $alerts = $this->notificationService->checkCriticalAlerts($branch, $forecast);
+
+        return response()->json([
+            'success' => true,
+            'branch_id' => $branchId,
+            'alerts' => $alerts,
+            'forecast_generated_at' => $forecast['generated_at'] ?? null,
+        ]);
+    }
+
+    /**
+     * Clear AI cache
+     *
+     * Clear cache untuk forecast atau recommendations.
+     *
+     * @authenticated
+     * @bodyParam type string required Type cache (forecast/recommendations/all). Example: forecast
+     * @bodyParam branch_id integer required ID cabang. Example: 1
+     *
+     * @response 200 {
+     *   "success": true,
+     *   "message": "Cache cleared successfully"
+     * }
+     */
+    public function clearCache(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|in:forecast,recommendations,all',
+            'branch_id' => 'required|exists:branches,id',
+        ]);
+
+        $branchId = $validated['branch_id'];
+        $type = $validated['type'];
+        $cleared = [];
+
+        if ($type === 'forecast' || $type === 'all') {
+            foreach ([7, 14, 30] as $days) {
+                $key = "sales_forecast_{$branchId}_{$days}";
+                if (Cache::has($key)) {
+                    Cache::forget($key);
+                    $cleared[] = $key;
+                }
+            }
+        }
+
+        if ($type === 'recommendations' || $type === 'all') {
+            $key = "menu_recommendations_{$branchId}";
+            if (Cache::has($key)) {
+                Cache::forget($key);
+                $cleared[] = $key;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cache cleared successfully',
+            'cleared_keys' => $cleared,
         ]);
     }
 }

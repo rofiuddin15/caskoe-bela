@@ -5,6 +5,7 @@ namespace App\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Services\AiService;
+use App\Services\AiNotificationService;
 use App\Models\Branch;
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +27,7 @@ class GenerateDailySalesForecast implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(AiService $aiService): void
+    public function handle(AiService $aiService, AiNotificationService $notificationService): void
     {
         Log::info('Starting daily sales forecast generation...');
 
@@ -43,8 +44,17 @@ class GenerateDailySalesForecast implements ShouldQueue
                 if ($forecast['success']) {
                     Log::info("Forecast generated successfully for branch {$branch->id}");
 
-                    // Optionally: Send notification to manager if needed
-                    // $this->notifyManager($branch, $forecast);
+                    // Check for critical alerts
+                    $alerts = $notificationService->checkCriticalAlerts($branch, $forecast);
+
+                    if (!empty($alerts)) {
+                        Log::warning("Critical alerts found for branch {$branch->id}", [
+                            'alerts' => $alerts,
+                        ]);
+                    }
+
+                    // Send notification to manager
+                    $notificationService->sendForecastNotification($branch, $forecast);
                 } else {
                     Log::error("Failed to generate forecast for branch {$branch->id}: {$forecast['error']}");
                 }
