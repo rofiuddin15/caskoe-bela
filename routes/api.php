@@ -15,15 +15,19 @@ use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ImageUploadController;
+use App\Http\Controllers\Api\AiController;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login/pin', [AuthController::class, 'loginWithPin']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     // Auth routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/set-pin', [AuthController::class, 'setPin']);
+    Route::put('/update-pin', [AuthController::class, 'updatePin']);
 
     // Branch management
     Route::apiResource('branches', BranchController::class);
@@ -73,4 +77,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Image Upload
     Route::post('upload/image', [ImageUploadController::class, 'upload']);
     Route::delete('upload/image', [ImageUploadController::class, 'delete']);
+
+    // AI Features
+    Route::prefix('ai')->group(function () {
+        Route::get('sales-forecast', [AiController::class, 'salesForecast']);
+        Route::post('menu-recommendations', [AiController::class, 'menuRecommendations']);
+        Route::get('business-insights', [AiController::class, 'businessInsights']);
+        Route::post('chatbot', [AiController::class, 'chatbot']);
+    });
 });

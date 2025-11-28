@@ -15,6 +15,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $email
  * @property \Illuminate\Support\Carbon|null $email_verified_at
  * @property string $password
+ * @property string|null $pin
  * @property int|null $branch_id
  * @property string|null $phone
  * @property string|null $address
@@ -36,6 +37,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'pin',
         'branch_id',
         'phone',
         'address',
@@ -48,6 +50,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'pin',
         'remember_token',
     ];
 
@@ -61,6 +64,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'pin' => 'hashed',
         ];
     }
 

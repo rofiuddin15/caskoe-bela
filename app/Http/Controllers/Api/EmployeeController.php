@@ -83,6 +83,7 @@ class EmployeeController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
+            'pin' => 'nullable|string|digits:6',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'branch_id' => 'nullable|exists:branches,id',
@@ -100,6 +101,7 @@ class EmployeeController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => Hash::make($validated['password']),
+                'pin' => $validated['pin'] ?? null,
                 'phone' => $validated['phone'] ?? null,
                 'address' => $validated['address'] ?? null,
                 'branch_id' => $validated['branch_id'] ?? null,
@@ -172,6 +174,7 @@ class EmployeeController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $employee->user_id,
             'password' => 'sometimes|string|min:8',
+            'pin' => 'nullable|string|digits:6',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'branch_id' => 'nullable|exists:branches,id',
@@ -190,6 +193,7 @@ class EmployeeController extends Controller
             if (isset($validated['name'])) $userUpdate['name'] = $validated['name'];
             if (isset($validated['email'])) $userUpdate['email'] = $validated['email'];
             if (isset($validated['password'])) $userUpdate['password'] = Hash::make($validated['password']);
+            if (isset($validated['pin'])) $userUpdate['pin'] = $validated['pin'];
             if (isset($validated['phone'])) $userUpdate['phone'] = $validated['phone'];
             if (isset($validated['address'])) $userUpdate['address'] = $validated['address'];
             if (isset($validated['branch_id'])) $userUpdate['branch_id'] = $validated['branch_id'];
